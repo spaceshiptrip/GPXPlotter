@@ -1,105 +1,46 @@
 # GPX 3D Plotter
 
-An interactive 3D GPX file visualizer built with React and Three.js. Load a `.gpx` file and explore your GPS track in 3D space, with mile markers, a start pin, and a checkered flag at the finish.
+A 3D GPX track visualizer built with React and Three.js. It displays latitude, longitude, and elevation data from GPX files as interactive 3D plots.
 
-## ✨ Features
+## Features
 
-- 🗺️ 3D plot of latitude, longitude, and elevation
-- 📍 Google-style map markers:
-  - ✅ Green pin at start
-  - 🏁 Checkered flag at finish
-  - 🔴 Red pins every mile
-- 📏 Top-down 2D view centered on the route
-- 🎮 Interactive 3D controls (rotate, zoom, pan)
-- 🧭 Axis helper and auto-scaled grid
-- 📁 Drag and drop GPX file upload
+- 3D track plotting based on lat/lon/elevation
+- Dynamic grid and axis
+- Colorized elevation lines
+- Gradient-filled elevation areas from track to ground
+- Mile markers, start & end markers with icons
+- OrbitControls for rotation/zoom/pan
 
-## 📸 Preview
+## Setup
 
-![GPX 3D Plot Screenshot](public/screenshot.png)
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/spaceshiptrip/GPXPlotter
-cd GPXPlotter
-````
-
-### 2. Install dependencies
-
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-### 3. Run the app
-
+### 2. Run the app
 ```bash
 npm start
 ```
 
+### 3. Open in browser
 Visit: [http://localhost:3000](http://localhost:3000)
 
 ### 4. Load a GPX file
 Click the upload button to select and render a `.gpx` file.
 
-
----
-
-## Customizing Opacity
-To adjust the fill transparency of the elevation gradient, you can modify the following line in `GPX3DPlotter.jsx`:
+## Customizing Fill Opacity
+To adjust the transparency of the elevation area fill, edit the following line in `GPX3DPlotter.jsx`:
 
 ```js
 const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.15 });
 ```
 
-Change the `opacity` value (between 0 and 1) to control how transparent the fill appears.
+You can change the `opacity` value (between 0 and 1) to control how visible or soft the filled area appears.
 
----
+## Screenshot
+![Example Screenshot](screenshot.png)
 
-## 🐳 Docker Support (optional)
-
-```bash
-docker build -t gpx-3d-plotter .
-docker run -p 8080:80 gpx-3d-plotter
-```
-
-Visit: [http://localhost:8080](http://localhost:8080)
-
----
-
-## 🛠️ Built With
-
-* [React](https://reactjs.org/)
-* [Three.js](https://threejs.org/)
-* [gpxparser](https://www.npmjs.com/package/gpxparser)
-* [CSS2DRenderer](https://threejs.org/docs/#examples/en/renderers/CSS2DRenderer)
-* [OrbitControls](https://threejs.org/docs/#examples/en/controls/OrbitControls)
-
----
-
-## 📌 Roadmap Ideas
-
-* Toggle between 2D and 3D views
-* Export as image or STL
-* Support for GPX extensions (heart rate, cadence, etc.)
-* Add terrain overlays or map tile base
-
----
-
-## 📄 License
-
-MIT — free to use and modify
-
----
-
+## Credits
 Made with ❤️ by spaceshiptrip 🚀
-
-```
-
-Let me know if you want to generate a live demo badge (e.g., Vercel/Netlify), include screenshots, or automate deployment with GitHub Actions!
-```
 
