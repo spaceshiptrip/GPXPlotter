@@ -16,7 +16,7 @@ An interactive 3D GPX file visualizer built with React and Three.js. Load a `.gp
 
 ## 📸 Preview
 
-> *(Add a screenshot or GIF here if you'd like)*
+![GPX 3D Plot Screenshot](public/screenshot.png)
 
 ---
 
@@ -81,7 +81,7 @@ MIT — free to use and modify
 
 ---
 
-Made with ❤️ by \[Your Name]
+Made with ❤️ by \spaceshiptrip
 
 ```
 
