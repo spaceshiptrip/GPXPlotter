@@ -35,8 +35,11 @@ export default function GPX3DPlotter() {
     const eles = points.map(p => p.ele);
 
     const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
     const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
     const minEle = Math.min(...eles);
+    const maxEle = Math.max(...eles);
 
     const scale = 100000;
 
@@ -45,7 +48,7 @@ export default function GPX3DPlotter() {
     const colors = [];
 
     const colorScale = (ele) => {
-      const norm = (ele - minEle) / (Math.max(...eles) - minEle);
+      const norm = (ele - minEle) / (maxEle - minEle);
       return new THREE.Color().setHSL(0.6 - norm * 0.6, 1, 0.5);
     };
 
@@ -70,10 +73,16 @@ export default function GPX3DPlotter() {
     const axesHelper = new THREE.AxesHelper(axisLength);
     scene.add(axesHelper);
 
-    const gridHelper = new THREE.GridHelper(1000, 20);
+    // Dynamically size the grid based on the plot bounds and center it
+    const gridWidth = (maxLon - minLon) * scale;
+    const gridHeight = (maxLat - minLat) * scale;
+    const gridSize = Math.max(gridWidth, gridHeight);
+    const gridDivisions = Math.floor(gridSize / 50);
+    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions);
+    gridHelper.position.set(gridWidth / 2, 0, gridHeight / 2);
     scene.add(gridHelper);
 
-    camera.position.set(500, 400, 500);
+    camera.position.set(gridWidth / 2, (maxEle - minEle) * 2, gridHeight / 2);
     controls.update();
 
     const animate = () => {
