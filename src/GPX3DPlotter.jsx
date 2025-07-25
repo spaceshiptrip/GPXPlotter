@@ -95,8 +95,12 @@ export default function GPX3DPlotter() {
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
 
-      // Add vertical line from point to base (y=0)
-      fillVertices.push(x, 0, z, x, y, z);
+      // Vertical gradient fill from origin to elevation
+      const bottomY = Math.min(0, y);
+      const topY = Math.max(0, y);
+      const transparentColor = new THREE.Color(color.r, color.g, color.b);
+
+      fillVertices.push(x, bottomY, z, x, topY, z);
       fillColors.push(color.r, color.g, color.b, color.r, color.g, color.b);
 
       if (i > 0) {
@@ -133,7 +137,7 @@ export default function GPX3DPlotter() {
 
     fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
     fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
-    const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
+    const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4 });
     const fillLines = new THREE.LineSegments(fillGeometry, fillMaterial);
     scene.add(fillLines);
 
