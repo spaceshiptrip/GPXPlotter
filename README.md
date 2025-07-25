@@ -25,8 +25,8 @@ An interactive 3D GPX file visualizer built with React and Three.js. Load a `.gp
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/gpx-3d-plotter.git
-cd gpx-3d-plotter
+git clone https://github.com/spaceshiptrip/GPXPlotter
+cd GPXPlotter
 ````
 
 ### 2. Install dependencies
@@ -81,7 +81,7 @@ MIT — free to use and modify
 
 ---
 
-Made with ❤️ by \spaceshiptrip
+Made with ❤️ by spaceshiptrip
 
 ```
 
