@@ -15,27 +15,48 @@ export default function GPX3DPlotter() {
     const track = parser.tracks[0];
     const points = track.points;
 
+    if (!points.length) return;
+
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    camera.position.set(0, 0, 100);
-    controls.update();
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+    controls.rotateSpeed = 0.5;
+    controls.zoomSpeed = 1.2;
+    controls.target.set(0, 0, 0);
+
+    // Normalize coordinates
+    const lats = points.map(p => p.lat);
+    const lons = points.map(p => p.lon);
+    const eles = points.map(p => p.ele);
+
+    const minLat = Math.min(...lats);
+    const minLon = Math.min(...lons);
+    const minEle = Math.min(...eles);
+
+    const scale = 100000; // Adjust for visual spacing
 
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
     const colors = [];
 
-    const minElevation = Math.min(...points.map(p => p.ele));
-    const maxElevation = Math.max(...points.map(p => p.ele));
+    const colorScale = ele => {
+      const norm = (ele - minEle) / (Math.max(...eles) - minEle);
+      return new THREE.Color().setHSL(0.6 - norm * 0.6, 1, 0.5);
+    };
 
-    points.forEach((pt, i) => {
-      vertices.push(i, pt.ele, 0);
-      const t = (pt.ele - minElevation) / (maxElevation - minElevation);
-      colors.push(t, 0, 1 - t);
+    points.forEach(pt => {
+      const x = (pt.lon - minLon) * scale;
+      const y = (pt.ele - minEle);
+      const z = (pt.lat - minLat) * scale;
+      vertices.push(x, y, z);
+      const color = colorScale(pt.ele);
+      colors.push(color.r, color.g, color.b);
     });
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -45,16 +66,27 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
+    camera.position.set(0, 200, 500);
+    controls.update();
+
     const animate = () => {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     };
-
     animate();
+
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
 
     return () => {
       mountRef.current.removeChild(renderer.domElement);
+      window.removeEventListener('resize', handleResize);
     };
   }, [fileContent]);
 
@@ -73,4 +105,3 @@ export default function GPX3DPlotter() {
     </div>
   );
 }
-
