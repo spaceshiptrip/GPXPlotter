@@ -81,7 +81,7 @@ MIT — free to use and modify
 
 ---
 
-Made with ❤️ by spaceshiptrip
+Made with ❤️ by spaceshiptrip 🚀
 
 ```
 
