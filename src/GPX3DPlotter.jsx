@@ -36,7 +36,6 @@ export default function GPX3DPlotter() {
     controls.dampingFactor = 0.1;
     controls.rotateSpeed = 0.5;
     controls.zoomSpeed = 1.2;
-    controls.target.set(0, 0, 0);
 
     const lats = points.map(p => p.lat);
     const lons = points.map(p => p.lon);
@@ -50,6 +49,12 @@ export default function GPX3DPlotter() {
     const maxEle = Math.max(...eles);
 
     const scale = 100000;
+
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLon = (minLon + maxLon) / 2;
+    const centerX = (centerLon - minLon) * scale;
+    const centerZ = (centerLat - minLat) * scale;
+    controls.target.set(centerX, 0, centerZ);
 
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
@@ -157,7 +162,9 @@ export default function GPX3DPlotter() {
     gridHelper.position.set(gridWidth / 2, 0, gridHeight / 2);
     scene.add(gridHelper);
 
-    camera.position.set(gridWidth / 2, (maxEle - minEle) * 2, gridHeight / 2);
+    // Set the camera to a top-down 2D-like view
+    camera.position.set(centerX, 0, centerZ + gridSize);
+    camera.lookAt(centerX, 0, centerZ);
     controls.update();
 
     const animate = () => {
