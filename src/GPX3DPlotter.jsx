@@ -30,7 +30,6 @@ export default function GPX3DPlotter() {
     controls.zoomSpeed = 1.2;
     controls.target.set(0, 0, 0);
 
-    // Normalize coordinates
     const lats = points.map(p => p.lat);
     const lons = points.map(p => p.lon);
     const eles = points.map(p => p.ele);
@@ -39,22 +38,23 @@ export default function GPX3DPlotter() {
     const minLon = Math.min(...lons);
     const minEle = Math.min(...eles);
 
-    const scale = 100000; // Adjust for visual spacing
+    const scale = 100000;
 
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
     const colors = [];
 
-    const colorScale = ele => {
+    const colorScale = (ele) => {
       const norm = (ele - minEle) / (Math.max(...eles) - minEle);
       return new THREE.Color().setHSL(0.6 - norm * 0.6, 1, 0.5);
     };
 
-    points.forEach(pt => {
+    points.forEach((pt) => {
       const x = (pt.lon - minLon) * scale;
       const y = (pt.ele - minEle);
       const z = (pt.lat - minLat) * scale;
       vertices.push(x, y, z);
+
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
     });
@@ -66,7 +66,14 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
-    camera.position.set(0, 200, 500);
+    const axisLength = 300;
+    const axesHelper = new THREE.AxesHelper(axisLength);
+    scene.add(axesHelper);
+
+    const gridHelper = new THREE.GridHelper(1000, 20);
+    scene.add(gridHelper);
+
+    camera.position.set(500, 400, 500);
     controls.update();
 
     const animate = () => {
@@ -101,7 +108,8 @@ export default function GPX3DPlotter() {
   return (
     <div className="w-screen h-screen">
       <input type="file" accept=".gpx" onChange={handleFileUpload} className="absolute z-10 m-4 p-2 bg-white rounded shadow" />
-      <div ref={mountRef} className="w-full h-full" />
+      <div ref={mountRef} className="w-full h-full relative" />
     </div>
   );
 }
+
