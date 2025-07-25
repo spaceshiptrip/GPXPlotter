@@ -52,8 +52,12 @@ export default function GPX3DPlotter() {
 
     const centerLat = (minLat + maxLat) / 2;
     const centerLon = (minLon + maxLon) / 2;
-    const centerX = (centerLon - minLon) * scale;
-    const centerZ = (centerLat - minLat) * scale;
+
+    const flipX = centerLon < 0 ? -1 : 1;
+    const flipZ = centerLat < 0 ? -1 : 1;
+
+    const centerX = flipX * (centerLon - minLon) * scale;
+    const centerZ = flipZ * (centerLat - minLat) * scale;
     controls.target.set(centerX, 0, centerZ);
 
     const geometry = new THREE.BufferGeometry();
@@ -69,21 +73,19 @@ export default function GPX3DPlotter() {
     let totalDistance = 0;
     const toRad = deg => (deg * Math.PI) / 180;
     const haversine = (a, b) => {
-      const R = 6371e3; // meters
+      const R = 6371e3;
       const φ1 = toRad(a.lat);
       const φ2 = toRad(b.lat);
       const Δφ = toRad(b.lat - a.lat);
       const Δλ = toRad(b.lon - a.lon);
-      const aVal = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const aVal = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
     points.forEach((pt, i) => {
-      const x = (pt.lon - minLon) * scale;
+      const x = flipX * (pt.lon - minLon) * scale;
       const y = (pt.ele - minEle);
-      const z = (pt.lat - minLat) * scale;
+      const z = flipZ * (pt.lat - minLat) * scale;
       vertices.push(x, y, z);
 
       const color = colorScale(pt.ele);
@@ -122,11 +124,10 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
-    // Add start marker (green pin)
     const startPt = points[0];
-    const startX = (startPt.lon - minLon) * scale;
+    const startX = flipX * (startPt.lon - minLon) * scale;
     const startY = (startPt.ele - minEle);
-    const startZ = (startPt.lat - minLat) * scale;
+    const startZ = flipZ * (startPt.lat - minLat) * scale;
     const startImg = document.createElement('img');
     startImg.src = 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
     startImg.style.width = '20px';
@@ -135,11 +136,10 @@ export default function GPX3DPlotter() {
     startLabel.position.set(startX, startY + 10, startZ);
     scene.add(startLabel);
 
-    // Add end marker (checkered flag)
     const endPt = points[points.length - 1];
-    const endX = (endPt.lon - minLon) * scale;
+    const endX = flipX * (endPt.lon - minLon) * scale;
     const endY = (endPt.ele - minEle);
-    const endZ = (endPt.lat - minLat) * scale;
+    const endZ = flipZ * (endPt.lat - minLat) * scale;
     const endImg = document.createElement('img');
     endImg.src = 'https://maps.google.com/mapfiles/ms/icons/flag.png';
     endImg.style.width = '20px';
@@ -151,18 +151,16 @@ export default function GPX3DPlotter() {
     mileMarkers.forEach(marker => scene.add(marker));
 
     const axisLength = 300;
-    const axesHelper = new THREE.AxesHelper(axisLength);
-    scene.add(axesHelper);
+    scene.add(new THREE.AxesHelper(axisLength));
 
     const gridWidth = (maxLon - minLon) * scale;
     const gridHeight = (maxLat - minLat) * scale;
     const gridSize = Math.max(gridWidth, gridHeight);
     const gridDivisions = Math.floor(gridSize / 50);
     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions);
-    gridHelper.position.set(gridWidth / 2, 0, gridHeight / 2);
+    gridHelper.position.set(0, 0, gridHeight / 2);
     scene.add(gridHelper);
 
-    // Set the camera to a top-down 2D-like view
     camera.position.set(centerX, 0, centerZ + gridSize);
     camera.lookAt(centerX, 0, centerZ);
     controls.update();
@@ -175,19 +173,16 @@ export default function GPX3DPlotter() {
     };
     animate();
 
-    const handleResize = () => {
+    window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
+    });
 
     return () => {
       mountRef.current.removeChild(renderer.domElement);
       mountRef.current.removeChild(labelRenderer.domElement);
-      window.removeEventListener('resize', handleResize);
     };
   }, [fileContent]);
 
