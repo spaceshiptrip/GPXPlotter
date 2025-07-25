@@ -88,17 +88,24 @@ export default function GPX3DPlotter() {
         totalDistance += haversine(points[i - 1], pt);
         if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
           const mileNum = mileMarkers.length + 1;
-          const div = document.createElement('div');
-          div.className = 'mile-marker';
-          div.textContent = `${mileNum} mi`;
-          div.style.color = 'white';
-          div.style.fontSize = '10px';
-          div.style.background = 'red';
-          div.style.padding = '2px 4px';
-          div.style.borderRadius = '4px';
-          const label = new CSS2DObject(div);
+          const img = document.createElement('img');
+          img.src = 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
+          img.style.width = '20px';
+          img.style.height = '20px';
+          const label = new CSS2DObject(img);
           label.position.set(x, y + 10, z);
+
+          const textDiv = document.createElement('div');
+          textDiv.textContent = `${mileNum} mi`;
+          textDiv.style.color = 'white';
+          textDiv.style.fontSize = '10px';
+          textDiv.style.textAlign = 'center';
+          textDiv.style.marginTop = '-4px';
+          const textLabel = new CSS2DObject(textDiv);
+          textLabel.position.set(x, y + 18, z);
+
           mileMarkers.push(label);
+          mileMarkers.push(textLabel);
         }
       }
     });
@@ -109,6 +116,32 @@ export default function GPX3DPlotter() {
     const material = new THREE.LineBasicMaterial({ vertexColors: true });
     const line = new THREE.Line(geometry, material);
     scene.add(line);
+
+    // Add start marker (green pin)
+    const startPt = points[0];
+    const startX = (startPt.lon - minLon) * scale;
+    const startY = (startPt.ele - minEle);
+    const startZ = (startPt.lat - minLat) * scale;
+    const startImg = document.createElement('img');
+    startImg.src = 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
+    startImg.style.width = '20px';
+    startImg.style.height = '20px';
+    const startLabel = new CSS2DObject(startImg);
+    startLabel.position.set(startX, startY + 10, startZ);
+    scene.add(startLabel);
+
+    // Add end marker (checkered flag)
+    const endPt = points[points.length - 1];
+    const endX = (endPt.lon - minLon) * scale;
+    const endY = (endPt.ele - minEle);
+    const endZ = (endPt.lat - minLat) * scale;
+    const endImg = document.createElement('img');
+    endImg.src = 'https://maps.google.com/mapfiles/ms/icons/flag.png';
+    endImg.style.width = '20px';
+    endImg.style.height = '20px';
+    const endLabel = new CSS2DObject(endImg);
+    endLabel.position.set(endX, endY + 10, endZ);
+    scene.add(endLabel);
 
     mileMarkers.forEach(marker => scene.add(marker));
 
