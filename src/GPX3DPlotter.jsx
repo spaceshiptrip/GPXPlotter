@@ -73,6 +73,8 @@ export default function GPX3DPlotter() {
 
     const mileMarkers = [];
     let totalDistance = 0;
+    let highestPt = { ele: -Infinity, x: 0, y: 0, z: 0, mile: 0 };
+
     const haversine = (a, b) => {
       const R = 6371e3;
       const φ1 = toRad(a.lat);
@@ -83,6 +85,8 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
+    const positionList = [];
+
     points.forEach((pt, i) => {
       const x = flipX * (pt.lon - minLon) * scale;
       const y = (pt.ele - minEle);
@@ -91,26 +95,48 @@ export default function GPX3DPlotter() {
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
 
-      if (i > 0) {
-        totalDistance += haversine(points[i - 1], pt);
-        if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
-          const marker = document.createElement('div');
-          marker.className = 'mile-marker';
-          marker.textContent = `${mileMarkers.length + 1}`;
-          marker.style.color = 'red';
-          const label = new CSS2DObject(marker);
-          label.position.set(x, y + 10, z);
-          scene.add(label);
-          mileMarkers.push(label);
-        }
+      totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
+      positionList.push({ x, y, z, ele: pt.ele, mile: totalDistance / 1609.34 });
+
+      if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
+        const marker = document.createElement('div');
+        marker.className = 'mile-marker';
+        marker.textContent = `${mileMarkers.length + 1}`;
+        marker.style.background = '#4285F4';
+        marker.style.color = 'white';
+        marker.style.padding = '2px 6px';
+        marker.style.borderRadius = '12px';
+        marker.style.fontWeight = 'bold';
+        marker.style.fontSize = '12px';
+        marker.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        const label = new CSS2DObject(marker);
+        label.position.set(x, y, z);
+        scene.add(label);
+        mileMarkers.push(label);
       }
     });
+
+    // Find the highest point AFTER collecting all data
+    highestPt = positionList.reduce((prev, curr) => (curr.ele > prev.ele ? curr : prev), highestPt);
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     const material = new THREE.LineBasicMaterial({ vertexColors: true });
     const line = new THREE.Line(geometry, material);
     scene.add(line);
+
+    const elevationLabel = document.createElement('div');
+    elevationLabel.className = 'elevation-peak';
+    const eleFeet = highestPt.ele * 3.28084;
+    elevationLabel.innerHTML = `⛰️<br/>${highestPt.ele.toFixed(1)} m / ${eleFeet.toFixed(0)} ft<br/>Mile ${highestPt.mile.toFixed(2)}`;
+    elevationLabel.style.color = 'black';
+    elevationLabel.style.padding = '4px';
+    elevationLabel.style.background = 'rgba(255,255,255,0.85)';
+    elevationLabel.style.borderRadius = '6px';
+    elevationLabel.style.fontSize = '12px';
+    const elevationCSSLabel = new CSS2DObject(elevationLabel);
+    elevationCSSLabel.position.set(highestPt.x, highestPt.y + 10, highestPt.z);
+    scene.add(elevationCSSLabel);
 
     const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
     const fillGeometry = new THREE.BufferGeometry();
@@ -147,7 +173,6 @@ export default function GPX3DPlotter() {
     const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
     scene.add(fillMesh);
 
-    // Start marker
     const startDiv = document.createElement('div');
     startDiv.textContent = '✅';
     const startLabel = new CSS2DObject(startDiv);
@@ -155,7 +180,6 @@ export default function GPX3DPlotter() {
     startLabel.position.set(flipX * (startPt.lon - minLon) * scale, (startPt.ele - minEle) + 10, flipZ * (startPt.lat - minLat) * scale);
     scene.add(startLabel);
 
-    // End marker
     const endDiv = document.createElement('div');
     endDiv.textContent = '🏁';
     const endLabel = new CSS2DObject(endDiv);
