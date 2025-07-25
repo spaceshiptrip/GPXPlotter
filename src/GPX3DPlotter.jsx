@@ -1,3 +1,4 @@
+// GPX3DPlotter.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -133,7 +134,6 @@ export default function GPX3DPlotter() {
     const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
     scene.add(fillMesh);
 
-    // Start and End Markers (unchanged)
     const startPt = points[0];
     const startX = flipX * (startPt.lon - minLon) * scale;
     const startY = (startPt.ele - minEle);
@@ -198,7 +198,7 @@ export default function GPX3DPlotter() {
     gridHelper.position.set(centerX, 0, centerZ);
     scene.add(gridHelper);
 
-    camera.position.set(centerX, 0, centerZ + gridSize);
+    camera.position.set(centerX, gridSize, centerZ);
     camera.lookAt(centerX, 0, centerZ);
     controls.update();
 
