@@ -10,6 +10,7 @@ export default function GPX3DPlotter() {
   const controlsRef = useRef(null);
   const cameraRef = useRef(null);
   const defaultViewRef = useRef({});
+  const [colorByGrade, setColorByGrade] = useState(false);
 
   useEffect(() => {
     if (!fileContent) return;
@@ -79,15 +80,6 @@ export default function GPX3DPlotter() {
     const fillVertices = [];
     const fillColors = [];
 
-    const colorScale = (ele) => {
-      const norm = (ele - minEle) / (maxEle - minEle);
-      return new THREE.Color().setHSL(0.6 - norm * 0.6, 1, 0.5);
-    };
-
-    const mileMarkers = [];
-    let totalDistance = 0;
-    let highestPt = { ele: -Infinity, x: 0, y: 0, z: 0, mile: 0 };
-
     const haversine = (a, b) => {
       const R = 6371e3;
       const φ1 = toRad(a.lat);
@@ -98,15 +90,48 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
-    const positionList = [];
+    // Compute rolling grade every mile
+    let milePoints = [];
+    let gradePerMile = [];
+    let cumulativeDist = 0;
+    let lastMileIndex = 0;
 
-    points.forEach((pt, i) => {
+    for (let i = 1; i < points.length; i++) {
+      cumulativeDist += haversine(points[i - 1], points[i]);
+      if (cumulativeDist >= 1609.34 || i === points.length - 1) {
+        const elevDiff = points[i].ele - points[lastMileIndex].ele;
+        const grade = (elevDiff / cumulativeDist) * 100;
+        gradePerMile.push({ index: i, grade });
+        lastMileIndex = i;
+        cumulativeDist = 0;
+      }
+    }
+
+    const mileMarkers = [];
+    let totalDistance = 0;
+    let highestPt = { ele: -Infinity, x: 0, y: 0, z: 0, mile: 0 };
+    let currentMileGrade = 0;
+    let mileIndex = 0;
+
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
       const x = flipX * (pt.lon - minLon) * scale;
       const y = pt.ele - minEle;
       const z = flipZ * (pt.lat - minLat) * scale;
 
       vertices.push(x, y, z);
-      const color = colorScale(pt.ele);
+
+      totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
+
+      if (mileIndex < gradePerMile.length && i <= gradePerMile[mileIndex].index) {
+        currentMileGrade = gradePerMile[mileIndex].grade;
+      } else if (mileIndex < gradePerMile.length) {
+        mileIndex++;
+      }
+
+      const color = colorByGrade
+        ? new THREE.Color().setHSL(0.6 - Math.min(currentMileGrade / 20, 1) * 0.6, 1, 0.5)
+        : new THREE.Color().setHSL(0.6 - ((pt.ele - minEle) / (maxEle - minEle)) * 0.6, 1, 0.5);
       colors.push(color.r, color.g, color.b);
 
       if (i > 0) {
@@ -123,15 +148,11 @@ export default function GPX3DPlotter() {
         fillVertices.push(x, y, z);
         fillVertices.push(x2, y2, z2);
 
-        const baseColor1 = colorScale(pt2.ele).clone().lerp(new THREE.Color(0x000000), 0.8);
-        const baseColor2 = colorScale(pt.ele).clone().lerp(new THREE.Color(0x000000), 0.8);
-
+        const baseColor1 = color.clone().lerp(new THREE.Color(0x000000), 0.8);
+        const baseColor2 = color.clone().lerp(new THREE.Color(0x000000), 0.8);
         for (let j = 0; j < 3; j++) fillColors.push(baseColor1.r, baseColor1.g, baseColor1.b);
         for (let j = 0; j < 3; j++) fillColors.push(baseColor2.r, baseColor2.g, baseColor2.b);
       }
-
-      totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
-      positionList.push({ x, y, z, ele: pt.ele, mile: totalDistance / 1609.34 });
 
       if (pt.ele > highestPt.ele) {
         highestPt = { x, y, z, ele: pt.ele, mile: totalDistance / 1609.34 };
@@ -153,19 +174,15 @@ export default function GPX3DPlotter() {
         scene.add(label);
         mileMarkers.push(label);
       }
-    });
+    }
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    const material = new THREE.LineBasicMaterial({ vertexColors: true });
-    const line = new THREE.Line(geometry, material);
-    scene.add(line);
+    scene.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true })));
 
     fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
     fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
-    const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
-    const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
-    scene.add(fillMesh);
+    scene.add(new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide })));
 
     const elevationLabel = document.createElement('div');
     elevationLabel.className = 'elevation-peak';
@@ -176,15 +193,13 @@ export default function GPX3DPlotter() {
     elevationLabel.style.background = 'rgba(255,255,255,0.85)';
     elevationLabel.style.borderRadius = '6px';
     elevationLabel.style.fontSize = '12px';
-    const elevationCSSLabel = new CSS2DObject(elevationLabel);
-    elevationCSSLabel.position.set(highestPt.x, highestPt.y + 10, highestPt.z);
-    scene.add(elevationCSSLabel);
+    const elevationObj = new CSS2DObject(elevationLabel);
+    elevationObj.position.set(highestPt.x, highestPt.y + 10, highestPt.z);
+    scene.add(elevationObj);
 
-    const gridSize = Math.max((maxLon - minLon) * scale, (maxLat - minLat) * scale) * 1.2;
-    const gridDivisions = Math.floor(gridSize / 50);
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions);
-    gridHelper.position.set(centerX, 0, centerZ);
-    scene.add(gridHelper);
+    const grid = new THREE.GridHelper(Math.max((maxLon - minLon) * scale, (maxLat - minLat) * scale) * 1.2, 20);
+    grid.position.set(centerX, 0, centerZ);
+    scene.add(grid);
 
     camera.position.copy(defaultViewRef.current.cameraPos);
     camera.lookAt(defaultViewRef.current.target);
@@ -209,7 +224,7 @@ export default function GPX3DPlotter() {
       mountRef.current.removeChild(renderer.domElement);
       mountRef.current.removeChild(labelRenderer.domElement);
     };
-  }, [fileContent]);
+  }, [fileContent, colorByGrade]);
 
   const handleFileUpload = e => {
     const reader = new FileReader();
@@ -227,10 +242,17 @@ export default function GPX3DPlotter() {
     }
   };
 
+  const toggleColorMode = () => {
+    setColorByGrade(prev => !prev);
+  };
+
   return (
     <div className="w-screen h-screen">
       <input type="file" accept=".gpx" onChange={handleFileUpload} className="absolute z-10 m-4 p-2 bg-white rounded shadow" />
       <button onClick={resetView} className="absolute top-20 left-4 z-10 p-2 bg-blue-500 text-white rounded shadow">Reset View</button>
+      <button onClick={toggleColorMode} className="absolute top-36 left-4 z-10 p-2 bg-green-600 text-white rounded shadow">
+        Toggle Color Mode
+      </button>
       <div ref={mountRef} className="w-full h-full relative" />
     </div>
   );
