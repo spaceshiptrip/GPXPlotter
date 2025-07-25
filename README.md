@@ -1,70 +1,90 @@
-# Getting Started with Create React App
+# GPX 3D Plotter
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An interactive 3D GPX file visualizer built with React and Three.js. Load a `.gpx` file and explore your GPS track in 3D space, with mile markers, a start pin, and a checkered flag at the finish.
 
-## Available Scripts
+## ✨ Features
 
-In the project directory, you can run:
+- 🗺️ 3D plot of latitude, longitude, and elevation
+- 📍 Google-style map markers:
+  - ✅ Green pin at start
+  - 🏁 Checkered flag at finish
+  - 🔴 Red pins every mile
+- 📏 Top-down 2D view centered on the route
+- 🎮 Interactive 3D controls (rotate, zoom, pan)
+- 🧭 Axis helper and auto-scaled grid
+- 📁 Drag and drop GPX file upload
 
-### `npm start`
+## 📸 Preview
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+> *(Add a screenshot or GIF here if you'd like)*
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🚀 Getting Started
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 1. Clone the repo
 
-### `npm run build`
+```bash
+git clone https://github.com/your-username/gpx-3d-plotter.git
+cd gpx-3d-plotter
+````
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 2. Install dependencies
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 3. Run the app
 
-### `npm run eject`
+```bash
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Visit: [http://localhost:3000](http://localhost:3000)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 🐳 Docker Support (optional)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+docker build -t gpx-3d-plotter .
+docker run -p 8080:80 gpx-3d-plotter
+```
 
-## Learn More
+Visit: [http://localhost:8080](http://localhost:8080)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🛠️ Built With
 
-### Code Splitting
+* [React](https://reactjs.org/)
+* [Three.js](https://threejs.org/)
+* [gpxparser](https://www.npmjs.com/package/gpxparser)
+* [CSS2DRenderer](https://threejs.org/docs/#examples/en/renderers/CSS2DRenderer)
+* [OrbitControls](https://threejs.org/docs/#examples/en/controls/OrbitControls)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+---
 
-### Analyzing the Bundle Size
+## 📌 Roadmap Ideas
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+* Toggle between 2D and 3D views
+* Export as image or STL
+* Support for GPX extensions (heart rate, cadence, etc.)
+* Add terrain overlays or map tile base
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 📄 License
 
-### Advanced Configuration
+MIT — free to use and modify
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+Made with ❤️ by \[Your Name]
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```
 
-### `npm run build` fails to minify
+Let me know if you want to generate a live demo badge (e.g., Vercel/Netlify), include screenshots, or automate deployment with GitHub Actions!
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
