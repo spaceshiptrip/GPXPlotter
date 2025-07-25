@@ -1,4 +1,3 @@
-// GPX3DPlotter.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -18,6 +17,8 @@ export default function GPX3DPlotter() {
     const points = track.points;
 
     if (!points.length) return;
+
+    const toRad = deg => (deg * Math.PI) / 180;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
@@ -54,8 +55,8 @@ export default function GPX3DPlotter() {
     const centerLat = (minLat + maxLat) / 2;
     const centerLon = (minLon + maxLon) / 2;
 
-    const flipX = centerLon < 0 ? -1 : 1;
-    const flipZ = centerLat < 0 ? -1 : 1;
+    const flipX = 1;
+    const flipZ = -1;
 
     const centerX = flipX * (centerLon - minLon) * scale;
     const centerZ = flipZ * (centerLat - minLat) * scale;
@@ -72,7 +73,6 @@ export default function GPX3DPlotter() {
 
     const mileMarkers = [];
     let totalDistance = 0;
-    const toRad = deg => (deg * Math.PI) / 180;
     const haversine = (a, b) => {
       const R = 6371e3;
       const φ1 = toRad(a.lat);
@@ -90,6 +90,20 @@ export default function GPX3DPlotter() {
       vertices.push(x, y, z);
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
+
+      if (i > 0) {
+        totalDistance += haversine(points[i - 1], pt);
+        if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
+          const marker = document.createElement('div');
+          marker.className = 'mile-marker';
+          marker.textContent = `${mileMarkers.length + 1}`;
+          marker.style.color = 'red';
+          const label = new CSS2DObject(marker);
+          label.position.set(x, y + 10, z);
+          scene.add(label);
+          mileMarkers.push(label);
+        }
+      }
     });
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -98,7 +112,6 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
-    // Transparent gradient fill below line
     const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
     const fillGeometry = new THREE.BufferGeometry();
     const fillVertices = [];
@@ -134,74 +147,29 @@ export default function GPX3DPlotter() {
     const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
     scene.add(fillMesh);
 
+    // Start marker
+    const startDiv = document.createElement('div');
+    startDiv.textContent = '✅';
+    const startLabel = new CSS2DObject(startDiv);
     const startPt = points[0];
-    const startX = flipX * (startPt.lon - minLon) * scale;
-    const startY = (startPt.ele - minEle);
-    const startZ = flipZ * (startPt.lat - minLat) * scale;
-    const startImg = document.createElement('img');
-    startImg.src = 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
-    startImg.style.width = '20px';
-    startImg.style.height = '20px';
-    const startLabel = new CSS2DObject(startImg);
-    startLabel.position.set(startX, startY + 10, startZ);
+    startLabel.position.set(flipX * (startPt.lon - minLon) * scale, (startPt.ele - minEle) + 10, flipZ * (startPt.lat - minLat) * scale);
     scene.add(startLabel);
 
+    // End marker
+    const endDiv = document.createElement('div');
+    endDiv.textContent = '🏁';
+    const endLabel = new CSS2DObject(endDiv);
     const endPt = points[points.length - 1];
-    const endX = flipX * (endPt.lon - minLon) * scale;
-    const endY = (endPt.ele - minEle);
-    const endZ = flipZ * (endPt.lat - minLat) * scale;
-    const endImg = document.createElement('img');
-    endImg.src = 'https://maps.google.com/mapfiles/ms/icons/flag.png';
-    endImg.style.width = '20px';
-    endImg.style.height = '20px';
-    const endLabel = new CSS2DObject(endImg);
-    endLabel.position.set(endX, endY + 10, endZ);
+    endLabel.position.set(flipX * (endPt.lon - minLon) * scale, (endPt.ele - minEle) + 10, flipZ * (endPt.lat - minLat) * scale);
     scene.add(endLabel);
 
-    points.forEach((pt, i) => {
-      if (i > 0) {
-        totalDistance += haversine(points[i - 1], pt);
-        if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
-          const mileNum = mileMarkers.length + 1;
-          const img = document.createElement('img');
-          img.src = 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
-          img.style.width = '20px';
-          img.style.height = '20px';
-          const label = new CSS2DObject(img);
-          const x = flipX * (pt.lon - minLon) * scale;
-          const y = (pt.ele - minEle);
-          const z = flipZ * (pt.lat - minLat) * scale;
-          label.position.set(x, y + 10, z);
-
-          const textDiv = document.createElement('div');
-          textDiv.textContent = `${mileNum} mi`;
-          textDiv.style.color = 'white';
-          textDiv.style.fontSize = '10px';
-          textDiv.style.textAlign = 'center';
-          textDiv.style.marginTop = '-4px';
-          const textLabel = new CSS2DObject(textDiv);
-          textLabel.position.set(x, y + 18, z);
-
-          mileMarkers.push(label);
-          mileMarkers.push(textLabel);
-        }
-      }
-    });
-    mileMarkers.forEach(marker => scene.add(marker));
-
-    scene.add(new THREE.AxesHelper(300));
-    const gridWidth = (maxLon - minLon) * scale;
-    const gridHeight = (maxLat - minLat) * scale;
-    const gridSize = Math.max(gridWidth, gridHeight) * 1.2;
+    const gridSize = Math.max((maxLon - minLon) * scale, (maxLat - minLat) * scale) * 1.2;
     const gridDivisions = Math.floor(gridSize / 50);
     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions);
     gridHelper.position.set(centerX, 0, centerZ);
     scene.add(gridHelper);
 
-    // 🔄 Rotate scene so that north points up
-    scene.rotation.y = Math.PI / 2;
-
-    camera.position.set(centerX, gridSize, centerZ);
+    camera.position.set(centerX, gridSize / 2, centerZ + 0.1);
     camera.lookAt(centerX, 0, centerZ);
     controls.update();
 
