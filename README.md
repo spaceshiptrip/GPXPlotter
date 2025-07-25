@@ -43,6 +43,9 @@ npm start
 
 Visit: [http://localhost:3000](http://localhost:3000)
 
+### 4. Load a GPX file
+Click the upload button to select and render a `.gpx` file.
+
 
 ---
 
