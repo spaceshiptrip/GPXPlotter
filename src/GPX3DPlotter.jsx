@@ -97,8 +97,8 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
-    // Soft blended fill below line
-    const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide });
+    // Transparent gradient fill below line
+    const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
     const fillGeometry = new THREE.BufferGeometry();
     const fillVertices = [];
     const fillColors = [];
@@ -122,10 +122,10 @@ export default function GPX3DPlotter() {
       fillVertices.push(x2, y2, z2);
       fillVertices.push(x1, y1, z1);
 
-      const color1 = colorScale(pt1.ele);
-      const color2 = colorScale(pt2.ele);
-      for (let j = 0; j < 3; j++) fillColors.push(color1.r, color1.g, color1.b);
-      for (let j = 0; j < 3; j++) fillColors.push(color2.r, color2.g, color2.b);
+      const baseColor1 = colorScale(pt1.ele).clone().lerp(new THREE.Color(0x000000), 0.8);
+      const baseColor2 = colorScale(pt2.ele).clone().lerp(new THREE.Color(0x000000), 0.8);
+      for (let j = 0; j < 3; j++) fillColors.push(baseColor1.r, baseColor1.g, baseColor1.b);
+      for (let j = 0; j < 3; j++) fillColors.push(baseColor2.r, baseColor2.g, baseColor2.b);
     }
 
     fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
