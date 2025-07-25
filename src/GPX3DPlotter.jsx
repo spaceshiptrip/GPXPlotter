@@ -82,14 +82,22 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
+    const fillGeometry = new THREE.BufferGeometry();
+    const fillVertices = [];
+    const fillColors = [];
+
     points.forEach((pt, i) => {
       const x = flipX * (pt.lon - minLon) * scale;
       const y = (pt.ele - minEle);
       const z = flipZ * (pt.lat - minLat) * scale;
-      vertices.push(x, y, z);
 
+      vertices.push(x, y, z);
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
+
+      // Add vertical line from point to base (y=0)
+      fillVertices.push(x, 0, z, x, y, z);
+      fillColors.push(color.r, color.g, color.b, color.r, color.g, color.b);
 
       if (i > 0) {
         totalDistance += haversine(points[i - 1], pt);
@@ -119,10 +127,15 @@ export default function GPX3DPlotter() {
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
     const material = new THREE.LineBasicMaterial({ vertexColors: true });
     const line = new THREE.Line(geometry, material);
     scene.add(line);
+
+    fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
+    fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
+    const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
+    const fillLines = new THREE.LineSegments(fillGeometry, fillMaterial);
+    scene.add(fillLines);
 
     const startPt = points[0];
     const startX = flipX * (startPt.lon - minLon) * scale;
