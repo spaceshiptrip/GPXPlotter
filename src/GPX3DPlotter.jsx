@@ -90,7 +90,6 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
-    // Compute rolling grade every mile
     let milePoints = [];
     let gradePerMile = [];
     let cumulativeDist = 0;
@@ -120,7 +119,6 @@ export default function GPX3DPlotter() {
       const z = flipZ * (pt.lat - minLat) * scale;
 
       vertices.push(x, y, z);
-
       totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
 
       if (mileIndex < gradePerMile.length && i <= gradePerMile[mileIndex].index) {
@@ -130,7 +128,7 @@ export default function GPX3DPlotter() {
       }
 
       const color = colorByGrade
-        ? new THREE.Color().setHSL(0.6 - Math.min(currentMileGrade / 20, 1) * 0.6, 1, 0.5)
+        ? new THREE.Color().setHSL(0.6 - Math.min(Math.abs(currentMileGrade) / 20, 1) * 0.6, 1, 0.5)
         : new THREE.Color().setHSL(0.6 - ((pt.ele - minEle) / (maxEle - minEle)) * 0.6, 1, 0.5);
       colors.push(color.r, color.g, color.b);
 
@@ -148,10 +146,8 @@ export default function GPX3DPlotter() {
         fillVertices.push(x, y, z);
         fillVertices.push(x2, y2, z2);
 
-        const baseColor1 = color.clone().lerp(new THREE.Color(0x000000), 0.8);
-        const baseColor2 = color.clone().lerp(new THREE.Color(0x000000), 0.8);
-        for (let j = 0; j < 3; j++) fillColors.push(baseColor1.r, baseColor1.g, baseColor1.b);
-        for (let j = 0; j < 3; j++) fillColors.push(baseColor2.r, baseColor2.g, baseColor2.b);
+        const baseColor = color.clone().lerp(new THREE.Color(0x000000), 0.8);
+        for (let j = 0; j < 6; j++) fillColors.push(baseColor.r, baseColor.g, baseColor.b);
       }
 
       if (pt.ele > highestPt.ele) {
@@ -197,6 +193,22 @@ export default function GPX3DPlotter() {
     elevationObj.position.set(highestPt.x, highestPt.y + 10, highestPt.z);
     scene.add(elevationObj);
 
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.style.position = 'absolute';
+    legend.style.bottom = '20px';
+    legend.style.left = '20px';
+    legend.style.padding = '6px 10px';
+    legend.style.background = 'rgba(255,255,255,0.9)';
+    legend.style.borderRadius = '6px';
+    legend.style.fontSize = '12px';
+    legend.style.color = '#333';
+    legend.style.zIndex = '9999';
+    legend.innerHTML = colorByGrade
+      ? '<b>Grade % Legend</b><br/>Red: 20%+<br/>Orange: 10–20%<br/>Yellow: 5–10%<br/>Green: 0–5%'
+      : '<b>Elevation Legend</b><br/>Purple: High<br/>Blue: Mid<br/>Green: Low';
+    mountRef.current.appendChild(legend);
+
     const grid = new THREE.GridHelper(Math.max((maxLon - minLon) * scale, (maxLat - minLat) * scale) * 1.2, 20);
     grid.position.set(centerX, 0, centerZ);
     scene.add(grid);
@@ -223,6 +235,8 @@ export default function GPX3DPlotter() {
     return () => {
       mountRef.current.removeChild(renderer.domElement);
       mountRef.current.removeChild(labelRenderer.domElement);
+      const legends = mountRef.current.querySelectorAll('.legend');
+      legends.forEach(l => l.remove());
     };
   }, [fileContent, colorByGrade]);
 
