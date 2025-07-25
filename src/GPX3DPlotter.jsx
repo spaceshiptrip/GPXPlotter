@@ -82,51 +82,13 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
-    const fillGeometry = new THREE.BufferGeometry();
-    const fillVertices = [];
-    const fillColors = [];
-
     points.forEach((pt, i) => {
       const x = flipX * (pt.lon - minLon) * scale;
       const y = (pt.ele - minEle);
       const z = flipZ * (pt.lat - minLat) * scale;
-
       vertices.push(x, y, z);
       const color = colorScale(pt.ele);
       colors.push(color.r, color.g, color.b);
-
-      // Vertical gradient fill from origin to elevation
-      const bottomY = Math.min(0, y);
-      const topY = Math.max(0, y);
-      const transparentColor = new THREE.Color(color.r, color.g, color.b);
-
-      fillVertices.push(x, bottomY, z, x, topY, z);
-      fillColors.push(color.r, color.g, color.b, color.r, color.g, color.b);
-
-      if (i > 0) {
-        totalDistance += haversine(points[i - 1], pt);
-        if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
-          const mileNum = mileMarkers.length + 1;
-          const img = document.createElement('img');
-          img.src = 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
-          img.style.width = '20px';
-          img.style.height = '20px';
-          const label = new CSS2DObject(img);
-          label.position.set(x, y + 10, z);
-
-          const textDiv = document.createElement('div');
-          textDiv.textContent = `${mileNum} mi`;
-          textDiv.style.color = 'white';
-          textDiv.style.fontSize = '10px';
-          textDiv.style.textAlign = 'center';
-          textDiv.style.marginTop = '-4px';
-          const textLabel = new CSS2DObject(textDiv);
-          textLabel.position.set(x, y + 18, z);
-
-          mileMarkers.push(label);
-          mileMarkers.push(textLabel);
-        }
-      }
     });
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -135,12 +97,43 @@ export default function GPX3DPlotter() {
     const line = new THREE.Line(geometry, material);
     scene.add(line);
 
+    // Soft blended fill below line
+    const fillMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide });
+    const fillGeometry = new THREE.BufferGeometry();
+    const fillVertices = [];
+    const fillColors = [];
+
+    for (let i = 1; i < points.length; i++) {
+      const pt1 = points[i - 1];
+      const pt2 = points[i];
+      const x1 = flipX * (pt1.lon - minLon) * scale;
+      const y1 = (pt1.ele - minEle);
+      const z1 = flipZ * (pt1.lat - minLat) * scale;
+
+      const x2 = flipX * (pt2.lon - minLon) * scale;
+      const y2 = (pt2.ele - minEle);
+      const z2 = flipZ * (pt2.lat - minLat) * scale;
+
+      fillVertices.push(x1, 0, z1);
+      fillVertices.push(x2, 0, z2);
+      fillVertices.push(x1, y1, z1);
+
+      fillVertices.push(x2, 0, z2);
+      fillVertices.push(x2, y2, z2);
+      fillVertices.push(x1, y1, z1);
+
+      const color1 = colorScale(pt1.ele);
+      const color2 = colorScale(pt2.ele);
+      for (let j = 0; j < 3; j++) fillColors.push(color1.r, color1.g, color1.b);
+      for (let j = 0; j < 3; j++) fillColors.push(color2.r, color2.g, color2.b);
+    }
+
     fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
     fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
-    const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4 });
-    const fillLines = new THREE.LineSegments(fillGeometry, fillMaterial);
-    scene.add(fillLines);
+    const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
+    scene.add(fillMesh);
 
+    // Start and End Markers (unchanged)
     const startPt = points[0];
     const startX = flipX * (startPt.lon - minLon) * scale;
     const startY = (startPt.ele - minEle);
@@ -165,11 +158,38 @@ export default function GPX3DPlotter() {
     endLabel.position.set(endX, endY + 10, endZ);
     scene.add(endLabel);
 
+    points.forEach((pt, i) => {
+      if (i > 0) {
+        totalDistance += haversine(points[i - 1], pt);
+        if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
+          const mileNum = mileMarkers.length + 1;
+          const img = document.createElement('img');
+          img.src = 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
+          img.style.width = '20px';
+          img.style.height = '20px';
+          const label = new CSS2DObject(img);
+          const x = flipX * (pt.lon - minLon) * scale;
+          const y = (pt.ele - minEle);
+          const z = flipZ * (pt.lat - minLat) * scale;
+          label.position.set(x, y + 10, z);
+
+          const textDiv = document.createElement('div');
+          textDiv.textContent = `${mileNum} mi`;
+          textDiv.style.color = 'white';
+          textDiv.style.fontSize = '10px';
+          textDiv.style.textAlign = 'center';
+          textDiv.style.marginTop = '-4px';
+          const textLabel = new CSS2DObject(textDiv);
+          textLabel.position.set(x, y + 18, z);
+
+          mileMarkers.push(label);
+          mileMarkers.push(textLabel);
+        }
+      }
+    });
     mileMarkers.forEach(marker => scene.add(marker));
 
-    const axisLength = 300;
-    scene.add(new THREE.AxesHelper(axisLength));
-
+    scene.add(new THREE.AxesHelper(300));
     const gridWidth = (maxLon - minLon) * scale;
     const gridHeight = (maxLat - minLat) * scale;
     const gridSize = Math.max(gridWidth, gridHeight) * 1.2;
