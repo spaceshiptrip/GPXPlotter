@@ -198,6 +198,9 @@ export default function GPX3DPlotter() {
     gridHelper.position.set(centerX, 0, centerZ);
     scene.add(gridHelper);
 
+    // 🔄 Rotate scene so that north points up
+    scene.rotation.y = Math.PI / 2;
+
     camera.position.set(centerX, gridSize, centerZ);
     camera.lookAt(centerX, 0, centerZ);
     controls.update();
