@@ -43,6 +43,18 @@ npm start
 
 Visit: [http://localhost:3000](http://localhost:3000)
 
+
+---
+
+## Customizing Opacity
+To adjust the fill transparency of the elevation gradient, you can modify the following line in `GPX3DPlotter.jsx`:
+
+```js
+const fillMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.15 });
+```
+
+Change the `opacity` value (between 0 and 1) to control how transparent the fill appears.
+
 ---
 
 ## 🐳 Docker Support (optional)
