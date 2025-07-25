@@ -155,10 +155,10 @@ export default function GPX3DPlotter() {
 
     const gridWidth = (maxLon - minLon) * scale;
     const gridHeight = (maxLat - minLat) * scale;
-    const gridSize = Math.max(gridWidth, gridHeight);
+    const gridSize = Math.max(gridWidth, gridHeight) * 1.2;
     const gridDivisions = Math.floor(gridSize / 50);
     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions);
-    gridHelper.position.set(0, 0, gridHeight / 2);
+    gridHelper.position.set(centerX, 0, centerZ);
     scene.add(gridHelper);
 
     camera.position.set(centerX, 0, centerZ + gridSize);
