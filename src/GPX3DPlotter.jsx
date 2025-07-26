@@ -112,6 +112,14 @@ export default function GPX3DPlotter() {
     let currentMileGrade = 0;
     let mileIndex = 0;
 
+    const startIcon = document.createElement('div');
+    startIcon.textContent = '🟢';
+    const startLabel = new CSS2DObject(startIcon);
+
+    const endIcon = document.createElement('div');
+    endIcon.textContent = '🏁';
+    const endLabel = new CSS2DObject(endIcon);
+
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
       const x = flipX * (pt.lon - minLon) * scale;
@@ -152,6 +160,16 @@ export default function GPX3DPlotter() {
 
       if (pt.ele > highestPt.ele) {
         highestPt = { x, y, z, ele: pt.ele, mile: totalDistance / 1609.34 };
+      }
+
+      if (i === 0) {
+        startLabel.position.set(x, y + 10, z);
+        scene.add(startLabel);
+      }
+
+      if (i === points.length - 1) {
+        endLabel.position.set(x, y + 10, z);
+        scene.add(endLabel);
       }
 
       if (Math.floor(totalDistance / 1609.34) > mileMarkers.length) {
