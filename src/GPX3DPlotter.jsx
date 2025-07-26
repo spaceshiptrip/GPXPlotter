@@ -5,25 +5,26 @@ import GPXParser from 'gpxparser';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
 
 export default function GPX3DPlotter() {
-  const mountRef = useRef(null);
-  const [fileContent, setFileContent] = useState(null);
-  const controlsRef = useRef(null);
-  const cameraRef = useRef(null);
-  const defaultViewRef = useRef({});
-  const [colorByGrade, setColorByGrade] = useState(false);
+  const mountRef = useRef(null); // DOM reference for rendering
+  const [fileContent, setFileContent] = useState(null); // GPX file content
+  const controlsRef = useRef(null); // OrbitControls instance
+  const cameraRef = useRef(null); // Camera instance
+  const defaultViewRef = useRef({}); // Default camera view
+  const [colorByGrade, setColorByGrade] = useState(false); // Toggle color mode
 
   useEffect(() => {
     if (!fileContent) return;
 
+    // Parse GPX file
     const parser = new GPXParser();
     parser.parse(fileContent);
     const track = parser.tracks[0];
     const points = track.points;
-
     if (!points.length) return;
 
     const toRad = deg => (deg * Math.PI) / 180;
 
+    // Setup scene, camera, and renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -31,6 +32,7 @@ export default function GPX3DPlotter() {
     mountRef.current.appendChild(renderer.domElement);
     cameraRef.current = camera;
 
+    // Label renderer for DOM elements in 3D
     const labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
     labelRenderer.domElement.style.position = 'absolute';
@@ -38,6 +40,7 @@ export default function GPX3DPlotter() {
     labelRenderer.domElement.style.pointerEvents = 'none';
     mountRef.current.appendChild(labelRenderer.domElement);
 
+    // OrbitControls setup
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
@@ -45,10 +48,10 @@ export default function GPX3DPlotter() {
     controls.zoomSpeed = 1.2;
     controlsRef.current = controls;
 
+    // Extract coordinate and elevation bounds
     const lats = points.map(p => p.lat);
     const lons = points.map(p => p.lon);
     const eles = points.map(p => p.ele);
-
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLon = Math.min(...lons);
@@ -57,12 +60,10 @@ export default function GPX3DPlotter() {
     const maxEle = Math.max(...eles);
 
     const scale = 100000;
-
     const centerLat = (minLat + maxLat) / 2;
     const centerLon = (minLon + maxLon) / 2;
-
-    const flipX = 1;
-    const flipZ = -1;
+    const flipX = 1; // optional inversion
+    const flipZ = -1; // optional inversion
 
     const centerX = flipX * (centerLon - minLon) * scale;
     const centerZ = flipZ * (centerLat - minLat) * scale;
@@ -73,6 +74,7 @@ export default function GPX3DPlotter() {
       target: new THREE.Vector3(centerX, 0, centerZ)
     };
 
+    // Prepare geometry containers
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
     const colors = [];
@@ -80,6 +82,7 @@ export default function GPX3DPlotter() {
     const fillVertices = [];
     const fillColors = [];
 
+    // Distance between 2 lat/lon points using haversine formula
     const haversine = (a, b) => {
       const R = 6371e3;
       const φ1 = toRad(a.lat);
@@ -90,28 +93,24 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
-    let milePoints = [];
-    let gradePerMile = [];
+    // Grade % calculation every 1/4 mile
+    let gradePerSegment = [];
     let cumulativeDist = 0;
-    let lastMileIndex = 0;
-
+    let lastSegmentIndex = 0;
     for (let i = 1; i < points.length; i++) {
-      cumulativeDist += haversine(points[i - 1], points[i]);
-      if (cumulativeDist >= 1609.34 || i === points.length - 1) {
-        const elevDiff = points[i].ele - points[lastMileIndex].ele;
-        const grade = (elevDiff / cumulativeDist) * 100;
-        gradePerMile.push({ index: i, grade });
-        lastMileIndex = i;
+      cumulativeDist += haversine(points[i - 1], points[i]); // add segment distance
+      if (cumulativeDist >= (402.336/20) || i === points.length - 1) { // 402.336 is ~1/4 mile
+        const elevDiff = points[i].ele - points[lastSegmentIndex].ele; // elevation change
+        const grade = (elevDiff / cumulativeDist) * 100; // percent grade
+        gradePerSegment.push({ index: i, grade }); // store it
+        lastSegmentIndex = i; // reset for next segment
         cumulativeDist = 0;
       }
     }
 
-    const mileMarkers = [];
+    // Markers and stats
     let totalDistance = 0;
     let highestPt = { ele: -Infinity, x: 0, y: 0, z: 0, mile: 0 };
-    let currentMileGrade = 0;
-    let mileIndex = 0;
-
     const startIcon = document.createElement('div');
     startIcon.textContent = '🟢';
     const startLabel = new CSS2DObject(startIcon);
@@ -120,6 +119,11 @@ export default function GPX3DPlotter() {
     endIcon.textContent = '🏁';
     const endLabel = new CSS2DObject(endIcon);
 
+    let segmentIndex = 0;
+    let currentGrade = 0;
+    const mileMarkers = [];
+
+    // Main loop for rendering
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
       const x = flipX * (pt.lon - minLon) * scale;
@@ -129,14 +133,16 @@ export default function GPX3DPlotter() {
       vertices.push(x, y, z);
       totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
 
-      if (mileIndex < gradePerMile.length && i <= gradePerMile[mileIndex].index) {
-        currentMileGrade = gradePerMile[mileIndex].grade;
-      } else if (mileIndex < gradePerMile.length) {
-        mileIndex++;
+      // Find grade segment
+      if (segmentIndex < gradePerSegment.length && i <= gradePerSegment[segmentIndex].index) {
+        currentGrade = gradePerSegment[segmentIndex].grade;
+      } else if (segmentIndex < gradePerSegment.length) {
+        segmentIndex++;
       }
 
+      // Choose color by elevation or grade
       const color = colorByGrade
-        ? new THREE.Color().setHSL(0.6 - Math.min(Math.abs(currentMileGrade) / 20, 1) * 0.6, 1, 0.5)
+        ? new THREE.Color().setHSL(0.6 - Math.min(Math.abs(currentGrade) / 20, 1) * 0.6, 1, 0.5)
         : new THREE.Color().setHSL(0.6 - ((pt.ele - minEle) / (maxEle - minEle)) * 0.6, 1, 0.5);
       colors.push(color.r, color.g, color.b);
 
@@ -146,6 +152,7 @@ export default function GPX3DPlotter() {
         const y2 = pt2.ele - minEle;
         const z2 = flipZ * (pt2.lat - minLat) * scale;
 
+        // Triangles for surface fill
         fillVertices.push(x2, 0, z2);
         fillVertices.push(x, 0, z);
         fillVertices.push(x2, y2, z2);
@@ -190,6 +197,7 @@ export default function GPX3DPlotter() {
       }
     }
 
+    // Final geometry build and scene add
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     scene.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true })));
@@ -198,6 +206,7 @@ export default function GPX3DPlotter() {
     fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
     scene.add(new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide })));
 
+    // Elevation peak label
     const elevationLabel = document.createElement('div');
     elevationLabel.className = 'elevation-peak';
     const eleFeet = highestPt.ele * 3.28084;
@@ -211,6 +220,7 @@ export default function GPX3DPlotter() {
     elevationObj.position.set(highestPt.x, highestPt.y + 10, highestPt.z);
     scene.add(elevationObj);
 
+    // Legend
     const legend = document.createElement('div');
     legend.className = 'legend';
     legend.style.position = 'absolute';
@@ -231,6 +241,7 @@ export default function GPX3DPlotter() {
     grid.position.set(centerX, 0, centerZ);
     scene.add(grid);
 
+    // Camera and renderer loop
     camera.position.copy(defaultViewRef.current.cameraPos);
     camera.lookAt(defaultViewRef.current.target);
     controls.update();
@@ -258,6 +269,7 @@ export default function GPX3DPlotter() {
     };
   }, [fileContent, colorByGrade]);
 
+  // File upload handler
   const handleFileUpload = e => {
     const reader = new FileReader();
     reader.onload = event => {
@@ -266,6 +278,7 @@ export default function GPX3DPlotter() {
     reader.readAsText(e.target.files[0]);
   };
 
+  // Reset to original view
   const resetView = () => {
     if (controlsRef.current && cameraRef.current && defaultViewRef.current.cameraPos) {
       cameraRef.current.position.copy(defaultViewRef.current.cameraPos);
@@ -274,6 +287,7 @@ export default function GPX3DPlotter() {
     }
   };
 
+  // Toggle color mode
   const toggleColorMode = () => {
     setColorByGrade(prev => !prev);
   };
