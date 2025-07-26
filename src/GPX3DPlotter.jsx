@@ -97,9 +97,14 @@ export default function GPX3DPlotter() {
     let gradePerSegment = [];
     let cumulativeDist = 0;
     let lastSegmentIndex = 0;
+
+    const QUARTER_MILE_METERS = 402.336; // 1/4 mile, change to 1609.34 for 1 mile
+    const INTERVAL_FACTOR = 20; // change this to decrease interval size
+    const GRADE_INTERVAL_METERS = QUARTER_MILE_METERS / INTERVAL_FACTOR; // 1/4 mile, change to 1609.34 for 1 mile
+
     for (let i = 1; i < points.length; i++) {
       cumulativeDist += haversine(points[i - 1], points[i]); // add segment distance
-      if (cumulativeDist >= (402.336/20) || i === points.length - 1) { // 402.336 is ~1/4 mile
+      if (cumulativeDist >= (GRADE_INTERVAL_METERS) || i === points.length - 1) { // 402.336 is ~1/4 mile
         const elevDiff = points[i].ele - points[lastSegmentIndex].ele; // elevation change
         const grade = (elevDiff / cumulativeDist) * 100; // percent grade
         gradePerSegment.push({ index: i, grade }); // store it
