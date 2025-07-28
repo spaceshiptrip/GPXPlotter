@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import GPXParser from 'gpxparser';
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement } from 'chart.js';
 
@@ -156,15 +156,24 @@ export default function GPX3DPlotter() {
     });
 
     const eleFeet = elevationProfile.map(p => (p.elevation * 3.28084).toFixed(0));
+    const gradeColors = elevationProfile.map((_, i) => {
+      if (i === 0) return 'rgba(75,192,192,1)';
+      const dist = (elevationProfile[i].mile - elevationProfile[i - 1].mile) * 1609.34;
+      const elevDiff = elevationProfile[i].elevation - elevationProfile[i - 1].elevation;
+      const pctGrade = (elevDiff / dist) * 100;
+      const h = 0.3 - Math.min(Math.max(pctGrade, -10), 10) / 20 * 0.3;
+      const color = new THREE.Color().setHSL(h, 1, 0.5);
+      return `rgb(${Math.floor(color.r * 255)},${Math.floor(color.g * 255)},${Math.floor(color.b * 255)})`;
+    });
+
     setChartData({
       labels: elevationProfile.map(p => p.mile.toFixed(2)),
       datasets: [
         {
           label: 'Elevation Profile (ft)',
           data: eleFeet,
-          fill: true,
-          backgroundColor: 'rgba(75,192,192,0.2)',
-          borderColor: 'rgba(75,192,192,1)',
+          backgroundColor: gradeColors,
+          borderColor: gradeColors,
           pointRadius: 0,
           tension: 0.3
         }
