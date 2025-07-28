@@ -4,17 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import GPXParser from 'gpxparser';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  LineElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement } from 'chart.js';
 
-ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement);
 
 export default function GPX3DPlotter() {
   const mountRef = useRef(null);
@@ -23,7 +15,8 @@ export default function GPX3DPlotter() {
   const cameraRef = useRef(null);
   const defaultViewRef = useRef({});
   const [colorByGrade, setColorByGrade] = useState(false);
-  const [elevationProfile, setElevationProfile] = useState([]);
+  const [chartData, setChartData] = useState(null);
+  const [showChart, setShowChart] = useState(false);
 
   useEffect(() => {
     if (!fileContent) return;
@@ -35,7 +28,6 @@ export default function GPX3DPlotter() {
     if (!points.length) return;
 
     const toRad = deg => (deg * Math.PI) / 180;
-
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -100,20 +92,23 @@ export default function GPX3DPlotter() {
     };
 
     let totalDistance = 0;
-    const elevationData = [];
+    const elevationProfile = [];
+
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
+      if (i > 0) totalDistance += haversine(points[i - 1], pt);
+      elevationProfile.push({
+        mile: totalDistance / 1609.34,
+        elevation: pt.ele
+      });
+
       const x = flipX * (pt.lon - minLon) * scale;
       const y = pt.ele - minEle;
       const z = flipZ * (pt.lat - minLat) * scale;
 
       vertices.push(x, y, z);
-      totalDistance += i > 0 ? haversine(points[i - 1], pt) : 0;
-
-      const color = new THREE.Color().setHSL((pt.ele - minEle) / (maxEle - minEle), 1, 0.5);
+      const color = new THREE.Color().setHSL(0.6 - ((pt.ele - minEle) / (maxEle - minEle)) * 0.6, 1, 0.5);
       colors.push(color.r, color.g, color.b);
-
-      elevationData.push({ mile: totalDistance / 1609.34, elevation: pt.ele });
 
       if (i > 0) {
         const pt2 = points[i - 1];
@@ -121,13 +116,8 @@ export default function GPX3DPlotter() {
         const y2 = pt2.ele - minEle;
         const z2 = flipZ * (pt2.lat - minLat) * scale;
 
-        fillVertices.push(x2, 0, z2);
-        fillVertices.push(x, 0, z);
-        fillVertices.push(x2, y2, z2);
-
-        fillVertices.push(x, 0, z);
-        fillVertices.push(x, y, z);
-        fillVertices.push(x2, y2, z2);
+        fillVertices.push(x2, 0, z2, x, 0, z, x2, y2, z2);
+        fillVertices.push(x, 0, z, x, y, z, x2, y2, z2);
 
         const baseColor = color.clone().lerp(new THREE.Color(0x000000), 0.8);
         for (let j = 0; j < 6; j++) fillColors.push(baseColor.r, baseColor.g, baseColor.b);
@@ -141,6 +131,10 @@ export default function GPX3DPlotter() {
     fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
     fillGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fillColors, 3));
     scene.add(new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide })));
+
+    const grid = new THREE.GridHelper(Math.max((maxLon - minLon) * scale, (maxLat - minLat) * scale) * 1.2, 20);
+    grid.position.set(centerX, 0, centerZ);
+    scene.add(grid);
 
     camera.position.copy(defaultViewRef.current.cameraPos);
     camera.lookAt(defaultViewRef.current.target);
@@ -161,7 +155,21 @@ export default function GPX3DPlotter() {
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    setElevationProfile(elevationData);
+    const eleFeet = elevationProfile.map(p => (p.elevation * 3.28084).toFixed(0));
+    setChartData({
+      labels: elevationProfile.map(p => p.mile.toFixed(2)),
+      datasets: [
+        {
+          label: 'Elevation Profile (ft)',
+          data: eleFeet,
+          fill: true,
+          backgroundColor: 'rgba(75,192,192,0.2)',
+          borderColor: 'rgba(75,192,192,1)',
+          pointRadius: 0,
+          tension: 0.3
+        }
+      ]
+    });
 
     return () => {
       mountRef.current.removeChild(renderer.domElement);
@@ -171,9 +179,7 @@ export default function GPX3DPlotter() {
 
   const handleFileUpload = e => {
     const reader = new FileReader();
-    reader.onload = event => {
-      setFileContent(event.target.result);
-    };
+    reader.onload = event => setFileContent(event.target.result);
     reader.readAsText(e.target.files[0]);
   };
 
@@ -189,31 +195,25 @@ export default function GPX3DPlotter() {
     <div className="w-screen h-screen">
       <input type="file" accept=".gpx" onChange={handleFileUpload} className="absolute z-10 m-4 p-2 bg-white rounded shadow" />
       <button onClick={resetView} className="absolute top-20 left-4 z-10 p-2 bg-blue-500 text-white rounded shadow">Reset View</button>
-      <div className="absolute bottom-4 left-4 w-[600px] bg-white p-4 rounded shadow z-10">
-        <Line
-          data={{
-            labels: elevationProfile.map(d => d.mile.toFixed(2)),
-            datasets: [{
-              label: 'Elevation (m)',
-              data: elevationProfile.map(d => d.elevation),
-              fill: true,
-              backgroundColor: 'rgba(66, 133, 244, 0.2)',
-              borderColor: 'rgba(66, 133, 244, 1)',
-            }]
-          }}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: { display: true },
-              tooltip: { mode: 'index', intersect: false }
-            },
-            scales: {
-              x: { title: { display: true, text: 'Distance (miles)' } },
-              y: { title: { display: true, text: 'Elevation (m)' } }
-            }
-          }}
-        />
-      </div>
+      <button onClick={() => setShowChart(prev => !prev)} className="absolute top-36 left-4 z-10 p-2 bg-purple-600 text-white rounded shadow">
+        {showChart ? 'Hide 2D Plot' : 'Show 2D Plot'}
+      </button>
+      {showChart && chartData && (
+        <div className="absolute bottom-0 left-0 w-full bg-white bg-opacity-90 z-10 p-4" style={{ height: '200px' }}>
+          <Line
+            data={chartData}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { title: { display: true, text: 'Miles' } },
+                y: { title: { display: true, text: 'Elevation (ft)' } }
+              },
+              plugins: { legend: { display: false } }
+            }}
+          />
+        </div>
+      )}
       <div ref={mountRef} className="w-full h-full relative" />
     </div>
   );
