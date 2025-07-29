@@ -4,9 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import GPXParser from 'gpxparser';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement } from 'chart.js';
+import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Filler } from 'chart.js';
 
-ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement);
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Filler);
 
 export default function GPX3DPlotter() {
   const mountRef = useRef(null);
@@ -91,15 +91,15 @@ export default function GPX3DPlotter() {
     };
 
     const getColorForGrade = (grade) => {
-      if (grade >= 25) return new THREE.Color("#ff0000");      // red
-      if (grade >= 20) return new THREE.Color("#ff6600");      // orange-red
-      if (grade >= 15) return new THREE.Color("#ff9900");      // orange
-      if (grade >= 10) return new THREE.Color("#ffcc00");      // yellow-orange
-      if (grade >= 5)  return new THREE.Color("#ccff00");      // yellow-green
-      if (grade >= 0)  return new THREE.Color("#00ff00");      // green
-      if (grade >= -5) return new THREE.Color("#00ccff");      // light blue
-      if (grade >= -10) return new THREE.Color("#3399ff");     // blue
-      return new THREE.Color("#6666ff");                       // indigo
+      if (grade >= 25) return new THREE.Color("#ff0000");
+      if (grade >= 20) return new THREE.Color("#ff6600");
+      if (grade >= 15) return new THREE.Color("#ff9900");
+      if (grade >= 10) return new THREE.Color("#ffcc00");
+      if (grade >= 5)  return new THREE.Color("#ccff00");
+      if (grade >= 0)  return new THREE.Color("#00ff00");
+      if (grade >= -5) return new THREE.Color("#00ccff");
+      if (grade >= -10) return new THREE.Color("#3399ff");
+      return new THREE.Color("#6666ff");
     };
 
     const gradePerPoint = new Array(points.length).fill(0);
@@ -140,7 +140,7 @@ export default function GPX3DPlotter() {
       const pctGrade = gradePerPoint[i];
       const color = getColorForGrade(pctGrade);
       colors.push(color.r, color.g, color.b);
-      gradeColors.push(`rgb(${Math.floor(color.r * 255)},${Math.floor(color.g * 255)},${Math.floor(color.b * 255)})`);
+      gradeColors.push(`rgba(${Math.floor(color.r * 255)},${Math.floor(color.g * 255)},${Math.floor(color.b * 255)},0.8)`);
 
       if (i > 0) {
         const pt2 = points[i - 1];
@@ -198,11 +198,13 @@ export default function GPX3DPlotter() {
           label: 'Elevation Profile (ft)',
           data: eleFeet,
           segment: {
-            borderColor: ctx => gradeColors[ctx.p0DataIndex]
+            borderColor: ctx => gradeColors[ctx.p0DataIndex],
+            backgroundColor: ctx => gradeColors[ctx.p0DataIndex]
           },
           pointRadius: 0,
           tension: 0.3,
-          borderWidth: 2
+          borderWidth: 2,
+          fill: true
         }
       ]
     });
