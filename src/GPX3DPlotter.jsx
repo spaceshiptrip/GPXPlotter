@@ -14,7 +14,6 @@ export default function GPX3DPlotter() {
   const controlsRef = useRef(null);
   const cameraRef = useRef(null);
   const defaultViewRef = useRef({});
-  const [colorByGrade, setColorByGrade] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [showChart, setShowChart] = useState(false);
 
@@ -91,24 +90,57 @@ export default function GPX3DPlotter() {
       return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
     };
 
+    const getColorForGrade = (grade) => {
+      if (grade >= 25) return new THREE.Color("#ff0000");      // red
+      if (grade >= 20) return new THREE.Color("#ff6600");      // orange-red
+      if (grade >= 15) return new THREE.Color("#ff9900");      // orange
+      if (grade >= 10) return new THREE.Color("#ffcc00");      // yellow-orange
+      if (grade >= 5)  return new THREE.Color("#ccff00");      // yellow-green
+      if (grade >= 0)  return new THREE.Color("#00ff00");      // green
+      if (grade >= -5) return new THREE.Color("#00ccff");      // light blue
+      if (grade >= -10) return new THREE.Color("#3399ff");     // blue
+      return new THREE.Color("#6666ff");                       // indigo
+    };
+
+    const gradePerPoint = new Array(points.length).fill(0);
+    let cumulativeDist = 0;
+    let lastSegmentIndex = 0;
+    const QUARTER_MILE_METERS = 402.336;
+    const INTERVAL_FACTOR = 40;
+    const GRADE_INTERVAL_METERS = QUARTER_MILE_METERS / INTERVAL_FACTOR;
+
+    for (let i = 1; i < points.length; i++) {
+      cumulativeDist += haversine(points[i - 1], points[i]);
+      if (cumulativeDist >= GRADE_INTERVAL_METERS || i === points.length - 1) {
+        const elevDiff = points[i].ele - points[lastSegmentIndex].ele;
+        const grade = (elevDiff / cumulativeDist) * 100;
+        for (let j = lastSegmentIndex + 1; j <= i; j++) gradePerPoint[j] = grade;
+        lastSegmentIndex = i;
+        cumulativeDist = 0;
+      }
+    }
+
     let totalDistance = 0;
     const elevationProfile = [];
+    const gradeColors = [];
+    const borderSegments = [];
+    const eleFeet = [];
 
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
       if (i > 0) totalDistance += haversine(points[i - 1], pt);
-      elevationProfile.push({
-        mile: totalDistance / 1609.34,
-        elevation: pt.ele
-      });
+      elevationProfile.push({ mile: totalDistance / 1609.34, elevation: pt.ele });
+      eleFeet.push((pt.ele * 3.28084).toFixed(0));
 
       const x = flipX * (pt.lon - minLon) * scale;
       const y = pt.ele - minEle;
       const z = flipZ * (pt.lat - minLat) * scale;
-
       vertices.push(x, y, z);
-      const color = new THREE.Color().setHSL(0.6 - ((pt.ele - minEle) / (maxEle - minEle)) * 0.6, 1, 0.5);
+
+      const pctGrade = gradePerPoint[i];
+      const color = getColorForGrade(pctGrade);
       colors.push(color.r, color.g, color.b);
+      gradeColors.push(`rgb(${Math.floor(color.r * 255)},${Math.floor(color.g * 255)},${Math.floor(color.b * 255)})`);
 
       if (i > 0) {
         const pt2 = points[i - 1];
@@ -121,6 +153,10 @@ export default function GPX3DPlotter() {
 
         const baseColor = color.clone().lerp(new THREE.Color(0x000000), 0.8);
         for (let j = 0; j < 6; j++) fillColors.push(baseColor.r, baseColor.g, baseColor.b);
+      }
+
+      if (i > 0) {
+        borderSegments.push({ x: elevationProfile[i - 1].mile.toFixed(2), y: eleFeet[i - 1], borderColor: gradeColors[i] });
       }
     }
 
@@ -155,27 +191,18 @@ export default function GPX3DPlotter() {
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    const eleFeet = elevationProfile.map(p => (p.elevation * 3.28084).toFixed(0));
-    const gradeColors = elevationProfile.map((_, i) => {
-      if (i === 0) return 'rgba(75,192,192,1)';
-      const dist = (elevationProfile[i].mile - elevationProfile[i - 1].mile) * 1609.34;
-      const elevDiff = elevationProfile[i].elevation - elevationProfile[i - 1].elevation;
-      const pctGrade = (elevDiff / dist) * 100;
-      const h = 0.3 - Math.min(Math.max(pctGrade, -10), 10) / 20 * 0.3;
-      const color = new THREE.Color().setHSL(h, 1, 0.5);
-      return `rgb(${Math.floor(color.r * 255)},${Math.floor(color.g * 255)},${Math.floor(color.b * 255)})`;
-    });
-
     setChartData({
       labels: elevationProfile.map(p => p.mile.toFixed(2)),
       datasets: [
         {
           label: 'Elevation Profile (ft)',
           data: eleFeet,
-          backgroundColor: gradeColors,
-          borderColor: gradeColors,
+          segment: {
+            borderColor: ctx => gradeColors[ctx.p0DataIndex]
+          },
           pointRadius: 0,
-          tension: 0.3
+          tension: 0.3,
+          borderWidth: 2
         }
       ]
     });
