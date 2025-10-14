@@ -98,8 +98,4 @@ MIT — free to use and modify
 
 Made with ❤️ by spaceshiptrip 🚀
 
-```
-
-Let me know if you want to generate a live demo badge (e.g., Vercel/Netlify), include screenshots, or automate deployment with GitHub Actions!
-```
 
